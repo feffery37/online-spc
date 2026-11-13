@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Spc.Algorithm/Spc.Algorithm.csproj" />
+    <Project Path="src/Spc.Application/Spc.Application.csproj" />
+    <Project Path="src/Spc.Domain/Spc.Domain.csproj" />
+    <Project Path="src/Spc.Infrastructure/Spc.Infrastructure.csproj" />
+    <Project Path="src/Spc.WebApi/Spc.WebApi.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Spc.Tests/Spc.Tests.csproj" />
+  </Folder>
+</Solution>
