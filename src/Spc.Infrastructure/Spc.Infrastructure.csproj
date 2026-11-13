@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Spc.Domain\Spc.Domain.csproj" />
+    <ProjectReference Include="..\Spc.Application\Spc.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SqlSugarCore" Version="5.1.4.207" />
+  </ItemGroup>
+</Project>
