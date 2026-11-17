@@ -144,4 +144,10 @@ public interface ISpcRepository
         long chartId, DateTime from, DateTime to, int take, CancellationToken ct);
     Task<long> InsertReportSnapshotAsync(SpcReportSnapshot snapshot, CancellationToken ct);
     Task<IReadOnlyList<SpcReportSnapshot>> GetReportSnapshotsAsync(long chartId, int take, CancellationToken ct);
+
+    // ---- 规则集配置 ----
+    Task<IReadOnlyList<SpcRuleSet>> GetRuleSetsAsync(CancellationToken ct);
+    Task<SpcRuleSet?> GetRuleSetAsync(string code, CancellationToken ct);
+    Task<long> InsertRuleSetAsync(SpcRuleSet set, CancellationToken ct);
+    Task UpdateRuleSetAsync(SpcRuleSet set, CancellationToken ct);
 }

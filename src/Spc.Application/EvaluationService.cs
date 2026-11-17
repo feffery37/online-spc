@@ -40,7 +40,8 @@ public sealed class EvaluationService(
     ISpcRepository repository,
     ILimitReader limitReader,
     IRealtimePublisher publisher,
-    IDispositionTrigger? disposition = null)
+    IDispositionTrigger? disposition = null,
+    RuleSetService? ruleSets = null)
 {
     public async Task<EvaluationOutcome> EvaluateAsync(long chartId, long subgroupId, CancellationToken ct)
     {
@@ -83,7 +84,10 @@ public sealed class EvaluationService(
         var zVar = window.Select(s => limits.StandardizeVariability(s.VariabilityStatisticFor(type))).ToArray();
         if (type == ChartType.IMR && zVar.Length > 0) zVar[0] = 0.0;
 
-        var ruleSet = RuleSetCatalog.Resolve(chart.RuleSetVer);
+        // 规则集来自配置服务（内置预设 + 库内自定义），未注入服务时回退静态目录（单测路径）。
+        var ruleSet = ruleSets is null
+            ? RuleSetCatalog.Resolve(chart.RuleSetVer)
+            : await ruleSets.ResolveAsync(chart.RuleSetVer, ct);
         var hits = RuleEngine.Evaluate(zMain, ruleSet.Rules)
             .Where(h => h.Index == currentIndex)
             .Select(h => (h.Code, h.Description, Chart: "MAIN", Z: zMain[currentIndex], Stat: window[currentIndex].Xbar))

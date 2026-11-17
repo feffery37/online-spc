@@ -5,13 +5,14 @@ using Spc.Domain;
 
 namespace Spc.WebApi.Controllers;
 
-/// <summary>M3：实时判异、Rule Out 告警与规则集配置（方案 8.2 / 6.2 / 6.4）。</summary>
+/// <summary>M3：实时判异、Rule Out 告警；规则集配置（方案 4.3 / 6.3 / 8.2）。</summary>
 [ApiController]
 [Route("api/spc")]
 public sealed class EvaluationController(
     EvaluationService evaluation,
     ISpcRepository repository,
-    ILimitReader limitReader) : ControllerBase
+    ILimitReader limitReader,
+    RuleSetService ruleSets) : ControllerBase
 {
     /// <summary>方案 8.2：POST /api/spc/evaluate，触发判异；支持指定子组或重放未评估子组。</summary>
     [HttpPost("evaluate")]
@@ -48,6 +49,7 @@ public sealed class EvaluationController(
         var version = await repository.GetLimitVersionAsync(r.LimitVerId, ct);
         var measures = await repository.GetMeasuresBySubgroupIdsAsync(r.ChartId, [r.SubgroupId], ct);
         var chart = await repository.GetChartAsync(r.ChartId, ct);
+        var resolved = chart is null ? null : await ruleSets.ResolveAsync(chart.RuleSetVer, ct);
 
         return new
         {
@@ -67,11 +69,15 @@ public sealed class EvaluationController(
                 version.SigmaHat, version.ApprovedBy, version.EffectiveFrom, version.ExpiredTime,
                 version.Status, version.SubgroupCount
             },
-            ruleSet = chart is null ? null : new
+            ruleSet = resolved is null ? null : new
             {
-                chart.RuleSetVer,
-                rules = RuleSetCatalog.Resolve(chart.RuleSetVer).Rules.Select(x => x.Code()),
-                description = RuleSetCatalog.Resolve(chart.RuleSetVer).Description
+                version = resolved.Version,
+                description = resolved.Description,
+                rules = resolved.Rules.Select(x => x.Code()),
+                severity = resolved.Severity.Select(k => new
+                {
+                    rule = k.Key.Code(), level = RuleSetCatalog.SeverityLabel(k.Value)
+                })
             },
             auditChain = "SPC_MEASURE -> SPC_SUBGROUP -> SPC_LIMIT_VERSION(审批人/哈希) -> SPC_RULE_OUT -> SPC_AUDIT_LOG"
         };
@@ -95,15 +101,54 @@ public sealed class EvaluationController(
         };
     }
 
-    [HttpGet("rulesets")]
-    public object RuleSets() => new
+    /// <summary>八条 WECO/Nelson 规则目录与标准阈值（阈值是常量，不开放修改）。</summary>
+    [HttpGet("rules")]
+    public object Rules() => new
     {
-        items = RuleSetCatalog.List().Select(s => new
+        items = RuleEngine.Descriptions.Select(k => new
         {
-            s.Version, s.Description,
-            rules = s.Rules.Select(r => r.Code()),
-            severity = s.Severity.Select(k => new { rule = k.Key.Code(), level = RuleSetCatalog.SeverityLabel(k.Value) })
+            code = k.Key.Code(),
+            description = k.Value,
+            threshold = Thresholds(k.Key),
+            phaseI = EnumText.PhaseIRules.Contains(k.Key)
         }),
-        note = "Phase I 恒用 R1~R4；Phase II 按 SPC_CHART.RULE_SET_VER 选择子集与严重级别（方案 4.3 / 风险清单）"
+        note = "阈值是 WECO/Nelson 标准常量；可配置的只有「启用哪些规则」与「命中后严重级别」"
+    };
+
+    [HttpGet("rulesets")]
+    public async Task<object> RuleSets(CancellationToken ct) => new
+    {
+        items = await ruleSets.ListAsync(ct),
+        builtInReadOnly = true,
+        note = "内置 WECO 预设只读；自定义规则集通过 POST /api/spc/rulesets 保存，" +
+               "再用 POST /api/spc/rulesets/bind 绑定到控制图。Phase I 恒用 R1~R4，不受此处影响。"
+    };
+
+    [HttpPost("rulesets")]
+    public async Task<object> SaveRuleSet([FromBody] RuleSetSaveRequest request, CancellationToken ct)
+    {
+        var (ok, error, view) = await ruleSets.SaveAsync(request, ct);
+        return new { ok, error, item = view };
+    }
+
+    [HttpPost("rulesets/bind")]
+    public async Task<object> BindRuleSet(
+        [FromQuery] long chartId, [FromQuery] string code, CancellationToken ct)
+    {
+        var (ok, error) = await ruleSets.BindAsync(chartId, code, ct);
+        return new { ok, error, chartId, code };
+    }
+
+    private static string Thresholds(RuleCode code) => code switch
+    {
+        RuleCode.R1 => "1 点超出 ±3σ",
+        RuleCode.R2 => "连续 9 点位于 CL 同侧",
+        RuleCode.R3 => "连续 6 点递增或递减",
+        RuleCode.R4 => "连续 14 点上下交替",
+        RuleCode.R5 => "3 点中 2 点超出 ±2σ",
+        RuleCode.R6 => "5 点中 4 点超出 ±1σ",
+        RuleCode.R7 => "连续 15 点全部落在 ±1σ 内",
+        RuleCode.R8 => "连续 8 点全部落在 ±1σ 外",
+        _ => string.Empty
     };
 }

@@ -29,7 +29,7 @@ npm install
 npm run dev
 #   打开 http://localhost:5173
 
-# 3) 验证（57 个用例：算法单测 + M2/M3/M4/M5 真实 SQLite 集成测试）
+# 3) 验证（62 个用例：算法单测 + M2/M3/M4/M5/规则集配置真实 SQLite 集成测试）
 dotnet test SpcOnline.slnx
 ```
 
@@ -65,13 +65,13 @@ src/
   Spc.Algorithm/      AIAG 常数表 / 控制限 / 8 判异规则 / Cp·Cpk·Pp·Ppk /
                       Phase I 稳定性迭代 / SHA256 指纹 / 直方图分箱（纯算法库）
   Spc.Application/    用例 + 端口：BaselineFreeze/Publish、FrozenLimitReader、CapabilityService、
-                      EvaluationService、RuleSetCatalog、DispositionService、OocActionPolicy、
+                      EvaluationService、RuleSetCatalog、RuleSetService、DispositionService、OocActionPolicy、
                       ReportService、IMesGateway、IDispositionTrigger
   Spc.Infrastructure/ SqlSugar 双 Provider、DbNaming 映射、DDL 初始化与迁移、
                       有序队列、仓储（进程级 DB 闸门串行化）
   Spc.WebApi/         Controllers、SignalR Hub、子组聚合/迟到重扫/报表调度 Worker、
                       MES 模拟器与 HTTP 适配器、数据源模拟器
-tests/Spc.Tests/      57 个 xUnit 用例（算法 29 + M2 6 + M3 7 + M4 8 + M5 7）
+tests/Spc.Tests/      62 个 xUnit 用例（算法 29 + M2 6 + M3 7 + M4 8 + M5 7 + 规则集配置 5）
 db/ddl_sqlite.sql     开发态 DDL（10 张表 + 唯一 ACTIVE 部分索引）
 db/ddl_oracle.sql     生产态 DDL（含 DECODE 函数唯一索引）
 web/                  Vue 3 + Vite + ECharts + SignalR 看板（7 个页面）
@@ -83,7 +83,7 @@ web/                  Vue 3 + Vite + ECharts + SignalR 看板（7 个页面）
 | 方案要求 | 落地情况 |
 |---|---|
 | 4.2 / A-01 常数表与公式 | `AiagConstants`（n=2~10 全表）、`LimitCalculator` 支持 Xbar-R / Xbar-S / I-MR；E2 由 `3/d₂(n=2)` 推导 |
-| 4.3 / A-05 八条判异 | `RuleEngine` 输入标准化 z；Phase I 仅 R1~R4，Phase II 按图配置 `WECO-8-V1 / WECO-4-V1 / WECO-8-STRICT` |
+| 4.3 / A-05 八条判异与规则配置 | `RuleEngine` 输入标准化 z；Phase I 恒用 R1~R4；Phase II 内置 `WECO-8-V1 / WECO-4-V1 / WECO-8-STRICT` 只读预设，另可在「建模配置 → Phase II 规则集配置」自定义**规则子集与逐条严重级别**，持久化 `SPC_RULE_SET`、绑定控制图、变更写审计。阈值是 WECO/Nelson 标准常量，不开放修改（避免配出无统计意义的规则） |
 | 4.4 / 4.5 规格限与控制限分离 | `USL/LSL` 只存 `SPC_CHART`；控制限只存 `SPC_LIMIT_VERSION`；**规格线只画在能力直方图**；`Cp/Cpk` 用冻结 σ̂ |
 | 5.2 / 5.4 Phase I 六步 | 预检 + 迭代（≥20 组、最多 10 轮、仅 R1~R4、无原因点拒绝）+ 剔除台账 + SHA256 指纹 |
 | 5.5 / 5.6 版本与换版 | 冻结快照全字段 + `CHART_TYPE`；`1→2→3→4` 状态机；发布事务仅改生命周期字段；发布闸门 + 唯一索引双保险 |
@@ -109,7 +109,7 @@ web/                  Vue 3 + Vite + ECharts + SignalR 看板（7 个页面）
 | A-07 | 每条 Rule Out 均有 OCAP 状态与 MES 回执 | ✅ 自动开单、Hold 下发、回执门禁、签核、验证关闭全链路集成测试 |
 | A-08 | 可查询限值版本、审批人、命中规则、动作、处置人、结论 | ✅ `/audit/trace` 六问齐备，端到端实测 `complete=True / missing=0` |
 
-实测（2026-11-13）：`dotnet build` **0 警告 0 错误**；`dotnet test` **57/57 通过**；`npm run build` 成功。
+实测（2026-11-13）：`dotnet build` **0 警告 0 错误**；`dotnet test` **62/62 通过**；`npm run build` 成功。
 M4 闭环冒烟：判异 → OCAP → 3 条 MES 动作 → 3 条回执 → 签核 → 验证 `CLOSED` → 审计 `complete=True / missing=0 / 17 事件`。
 M5 报表冒烟：冻结 V1 → 发布 → 能力直方图 `samples=125 / bins=20` → 周期报表 7 期 →
 合规自检 **9/9 PASS** → 快照指纹 `dfab932e…`（8667 字节）→ 定时任务 → 四类 CSV 均有内容 →

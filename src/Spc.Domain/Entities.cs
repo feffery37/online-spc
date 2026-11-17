@@ -178,6 +178,23 @@ public class SpcAuditLog
     public DateTime CreatedAt { get; set; }
 }
 
+/// <summary>自定义 Phase II 规则集：规则子集与严重级别可配、可审计（方案 6.3）。</summary>
+public class SpcRuleSet
+{
+    public long Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    /// <summary>JSON 数组，如 ["R1","R2"]。</summary>
+    public string Rules { get; set; } = string.Empty;
+    /// <summary>JSON 对象，如 {"R1":"CRITICAL"}。</summary>
+    public string Severity { get; set; } = string.Empty;
+    public int IsEnabled { get; set; } = 1;
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 /// <summary>M5 报表快照：定时/手工生成的日报周报月报与合规取证包，带哈希保证可复现、可取证。</summary>
 public class SpcReportSnapshot
 {

@@ -39,6 +39,9 @@ export const SPC = {
   ruleOutDetail: (id) => api(`/api/spc/ruleout/${id}`),
   alerts: (id) => api(`/api/spc/alerts?chartId=${id}`),
   ruleSets: () => api('/api/spc/rulesets'),
+  ruleCatalog: () => api('/api/spc/rules'),
+  saveRuleSet: (req) => post('/api/spc/rulesets', req),
+  bindRuleSet: (chartId, code) => post(`/api/spc/rulesets/bind?chartId=${chartId}&code=${encodeURIComponent(code)}`),
 
   // M4：OCAP + MES Hold 处置闭环
   ocaps: (id) => api(`/api/spc/ocap?chartId=${id}`),

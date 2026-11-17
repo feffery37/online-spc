@@ -51,6 +51,7 @@ else
 }
 builder.Services.AddSingleton<DispositionService>();
 builder.Services.AddSingleton<IDispositionTrigger>(sp => sp.GetRequiredService<DispositionService>());
+builder.Services.AddSingleton<RuleSetService>();
 builder.Services.AddSingleton<EvaluationService>();
 builder.Services.AddSingleton<ReportService>();
 builder.Services.AddSingleton<ReportSchedulerWorker>();

@@ -469,4 +469,24 @@ public sealed class SpcRepository(SqlSugarScope db) : ISpcRepository
             return all.OrderByDescending(s => s.GeneratedAt).ThenByDescending(s => s.Id)
                 .Take(take).ToArray();
         }, ct);
+
+    // ---------------- 规则集配置 ----------------
+
+    public Task<IReadOnlyList<SpcRuleSet>> GetRuleSetsAsync(CancellationToken ct)
+        => Gate<IReadOnlyList<SpcRuleSet>>(async () =>
+            await db.Queryable<SpcRuleSet>().ToListAsync(), ct);
+
+    public Task<SpcRuleSet?> GetRuleSetAsync(string code, CancellationToken ct)
+        => Gate<SpcRuleSet?>(async () =>
+            await db.Queryable<SpcRuleSet>().FirstAsync(s => s.Code == code), ct);
+
+    public async Task<long> InsertRuleSetAsync(SpcRuleSet set, CancellationToken ct)
+        => await Gate<long>(async () =>
+        {
+            set.Id = await db.Insertable(set).ExecuteReturnBigIdentityAsync();
+            return set.Id;
+        }, ct);
+
+    public Task UpdateRuleSetAsync(SpcRuleSet set, CancellationToken ct)
+        => Gate(async () => { await db.Updateable(set).ExecuteCommandAsync(); }, ct);
 }

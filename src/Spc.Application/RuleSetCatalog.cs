@@ -56,9 +56,12 @@ public static class RuleSetCatalog
 
     public static IReadOnlyList<RuleSetDefinition> List() => [Full, Conservative, Strict];
 
-    public static RuleSetDefinition Resolve(string? version) =>
-        string.IsNullOrWhiteSpace(version) ? Full :
-        All.TryGetValue(version, out var set) ? set : Full;
+    public static RuleSetDefinition Resolve(string? version) => TryGet(version) ?? Full;
+
+    /// <summary>只查内置预设、不回退，供 RuleSetService 判断是否需要读自定义配置。</summary>
+    public static RuleSetDefinition? TryGet(string? version) =>
+        string.IsNullOrWhiteSpace(version) ? null :
+        All.TryGetValue(version, out var set) ? set : null;
 
     public static string SeverityLabel(Severity s) => s switch
     {
